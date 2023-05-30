@@ -11,9 +11,6 @@ else
 	exit 1
 fi
 
-EDITOR=${EDITOR:-vi}
-VISUAL=${VISUAL:-$EDITOR}
-
 [ "$GPM_DIR" ] || if [ "$XDG_DATA_HOME" ]; then
 	GPM_DIR="$XDG_DATA_HOME/gpm"
 else
