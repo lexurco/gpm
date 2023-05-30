@@ -1,0 +1,101 @@
+.Dd May 30, 2023
+.Dt GPM 1
+.Os
+.Sh NAME
+.Nm gpm
+.Nd gpg-based password manager
+.Sh SYNOPSIS
+.Nm
+.Op Fl d Ar dir
+.Op Fl r Ar recipient
+.Ar command
+.Op Ar arg ...
+.Sh DESCRIPTION
+The utility
+.Nm
+is a password manager.
+Passwords are stored in a single directory as files, encrypted with
+.X/ gpg 1 .
+.Nm
+provides several commands for adding, removing and manipulating passwords.
+Commands may be specified by their shortest unique prefix (all characters
+after are ignored).
+Commands may accept additional arguments.
+Commands may be preceeded by global options as follows:
+.Bl -tag -width Ds
+.It Fl d Ar dir
+The directory to store and retrieve passwords from.
+Overrides
+.Ev GPM_DIR .
+.It Fl r Ar recipient
+User id for whom the passwords are encrypted.
+Overrides
+.Ev GPM_RECIPIENT .
+See the
+.Fl r
+flag for
+.Xr gpg 1 .
+.El
+.Pp
+The
+.Nm
+commands are as follows:
+.Bl -tag -width Ds
+.It Cm add Ar name
+Create a new password
+.Ar name .
+The new password will be read from stdin.
+If used from a TTY, a confirmation will be requested.
+.It Cm ls
+List existing passwords.
+.It Cm mv Ar from Ar to
+Rename password
+.Ar from
+to
+.Ar to .
+.It Cm rm Ar name
+Remove password
+.Ar name .
+.It Cm show Ar name
+Decrypt the password
+.Ar name
+and print it to stdout.
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width GPM_RECIPIENT
+.It Ev GPM_DIR
+Directory in which the passwords are stored.
+.It Ev XDG_DATA_HOME
+If
+.Ev XDG_DATA_HOME
+is set, but
+.Ev GPM_DIR
+isn't, the default password directory will be
+.Pa $XDG_DATA_HOME/gpm .
+.It Ev GPM_RECIPIENT
+The recipient to whom passwords are encrypted.
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa $HOME/.gpm
+The default password directory if neither
+.Ev GPM_DIR ,
+nor
+.Ev XDG_DATA_HOME
+are set.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Tab-completion may be set, e.g. with
+.Xr ksh 1 :
+.Bd -literal -offset indent
+set -A complete_gpm_1 -- add ls mv rm show
+set -A complete_gpm -- $(pm l)
+.Ed
+.Sh SEE ALSO
+.Xr gpg 1 ,
+.Xr gpg2 1 ,
+.Xr pm 1
+.Sh AUTHORS
+.An Alexander Arkhipov Aq Mt aa@manpager.net .

@@ -1,0 +1,4 @@
+gpm is a gpg-based password manager, similar to pass, but much simpler, and
+free of the bash dependency. gpm is developed from my other now-deprecated
+openssl-based password manager pm. To convert pm passwords into gpm passwords,
+please use the pm2gpm script. For installation run `make install'.
