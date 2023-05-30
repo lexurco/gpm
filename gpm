@@ -1,0 +1,111 @@
+#!/bin/sh
+
+umask 077
+
+if which gpg >/dev/null 2>&1; then
+	gpg=gpg
+elif which gpg2 >/dev/null 2>&1; then
+	gpg=gpg2
+else
+	echo "couldn't find gpg" 2>/dev/null
+	exit 1
+fi
+
+EDITOR=${EDITOR:-vi}
+VISUAL=${VISUAL:-$EDITOR}
+
+[ "$GPM_DIR" ] || if [ "$XDG_DATA_HOME" ]; then
+	GPM_DIR="$XDG_DATA_HOME/gpm"
+else
+	GPM_DIR="$HOME/.gpm"
+fi
+
+[ -d "$GPM_DIR" ] || mkdir -p "$GPM_DIR" || exit $?
+
+# Normal files should be created read-only.
+umask 377
+
+cd "$GPM_DIR" || exit 1
+
+err() {
+	eval=$1
+	shift
+	echo $0: "$@" >&2
+	exit $eval
+}
+
+gpgname() {
+	if printf %s\\n "$1" | grep -q '\.gpg$'; then
+		printf %s\\n "$1"
+	else
+		printf %s\\n "$1.gpg"
+	fi
+}
+
+gpgbasename() {
+	printf %s\\n "$(gpgname "$(basename "$1")")"
+}
+
+add() {
+	ret=0
+
+	[ "$GPM_RECIPIENT" ] ||
+	    err 1 "please, set GPM_RECIPIENT, or use the -r option"
+
+	[ "$1" ] || usage
+	out="$(gpgbasename "$1")"
+
+	[ -e "$out" ] && err 1 "$1 already exists"
+
+	if [ -t 0 ]; then
+		stty -echo
+		printf %s secret:; IFS= read -r sec; echo
+		printf %s confirm:; IFS= read -r confirm; echo
+		stty echo
+		[ "$sec" = "$confirm" ] || err 1 "confirmation failed"
+	else
+		IFS= read -r sec
+	fi
+
+	printf %s "$sec" | "$gpg" -e -r "$GPM_RECIPIENT" >"$out" ||
+	    { rm -f "$out"; ret=1; }
+
+	# The script might be sourced.
+	sec=
+	confirm=
+
+	exit $ret
+}
+
+move() {
+	to="$(gpgbasename "$2")"
+	[ -e "$to" ] && err "file $to already exists; aborting"
+	mv "$(gpgbasename "$1")" "$to"
+}
+
+usage() {
+	cat >&2 <<EOF
+usage:	$0 [-d dir] [-r recipient] {add | rm | show} name
+	$0 [-d dir] [-r recipient] mv from to
+	$0 [-d dir] [-r recipient] ls
+EOF
+	exit 1
+}
+
+while getopts r:d: s; do
+	case $s in
+	d)	GPM_DIR="$OPTARG" ;;
+	r)	GPM_RECIPIENT="$OPTARG" ;;
+	*)	usage ;;
+	esac
+done
+shift $((OPTIND-1))
+
+case $1 in
+a*) shift; add "$@" ;;
+l*) ls ;;
+m*) shift; move "$@" ;;
+r*) rm -f "$(gpgbasename "$2")" ;;
+s*) "$gpg" -q -d "$(gpgbasename "$2")" ;;
+ *) usage ;;
+esac

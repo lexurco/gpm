@@ -1,0 +1,12 @@
+#!/bin/sh -e
+
+stty -echo
+printf pass:; IFS= read -r pass; echo
+stty echo
+
+for f in $(pm l); do
+	printf %s\\n "$pass" | pm s "$f" | gpm "$@" add "$f"
+done
+
+# The script might have been sourced.
+pass=
