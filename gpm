@@ -104,6 +104,6 @@ a*) shift; add "$@" ;;
 l*) ls ;;
 m*) shift; move "$@" ;;
 r*) rm -f "$(gpgbasename "$2")" ;;
-s*) "$gpg" -q -d "$(gpgbasename "$2")" ;;
+s*) "$gpg" -qd $(gpgbasename "$2") | if [ -t 1 ]; then awk {print}; else cat; fi ;;
  *) usage ;;
 esac
