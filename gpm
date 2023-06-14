@@ -2,15 +2,6 @@
 
 umask 077
 
-if which gpg >/dev/null 2>&1; then
-	gpg=gpg
-elif which gpg2 >/dev/null 2>&1; then
-	gpg=gpg2
-else
-	echo "couldn't find gpg" 2>/dev/null
-	exit 1
-fi
-
 [ "$GPM_DIR" ] || if [ "$XDG_DATA_HOME" ]; then
 	GPM_DIR="$XDG_DATA_HOME/gpm"
 else
@@ -31,6 +22,19 @@ err() {
 	exit $eval
 }
 
+g() {
+	[ "$gpg" ] || if which gpg >/dev/null 2>&1; then
+		gpg=gpg
+	elif which gpg2 >/dev/null 2>&1; then
+		gpg=gpg2
+	else
+		echo "couldn't find gpg" 2>/dev/null
+		exit 1
+	fi
+
+	$gpg "$@"
+}
+
 gpgname() {
 	if printf %s\\n "$1" | grep -q '\.gpg$'; then
 		printf %s\\n "$1"
@@ -40,7 +44,7 @@ gpgname() {
 }
 
 gpgbasename() {
-	printf %s\\n "$(gpgname "$(basename "$1")")"
+	printf %s\\n $(gpgname $(basename "$1"))
 }
 
 add() {
@@ -50,7 +54,7 @@ add() {
 	    err 1 "please, set GPM_RECIPIENT, or use the -r option"
 
 	[ "$1" ] || usage
-	out="$(gpgbasename "$1")"
+	out=$(gpgbasename "$1")
 
 	[ -e "$out" ] && err 1 "$1 already exists"
 
@@ -64,7 +68,7 @@ add() {
 		IFS= read -r sec
 	fi
 
-	printf %s "$sec" | "$gpg" -e -r "$GPM_RECIPIENT" >"$out" ||
+	printf %s "$sec" | g -e -r "$GPM_RECIPIENT" >"$out" ||
 	    { rm -f "$out"; ret=1; }
 
 	# The script might be sourced.
@@ -76,9 +80,9 @@ add() {
 
 move() {
 	[ "$2" ] || usage
-	to="$(gpgbasename "$2")"
+	to=$(gpgbasename "$2")
 	[ -e "$to" ] && err "file $to already exists; aborting"
-	mv "$(gpgbasename "$1")" "$to"
+	mv $(gpgbasename "$1") "$to"
 }
 
 usage() {
@@ -103,7 +107,7 @@ case $1 in
 a*) shift; add "$@" ;;
 l*) ls ;;
 m*) shift; move "$@" ;;
-r*) rm -f "$(gpgbasename "$2")" ;;
-s*) "$gpg" -qd $(gpgbasename "$2") | if [ -t 1 ]; then awk {print}; else cat; fi ;;
+r*) rm -f $(gpgbasename "$2") ;;
+s*) g -qd $(gpgbasename "$2") | if [ -t 1 ]; then awk {print}; else cat; fi ;;
  *) usage ;;
 esac
