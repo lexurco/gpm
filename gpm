@@ -75,6 +75,7 @@ add() {
 }
 
 move() {
+	[ "$2" ] || usage
 	to="$(gpgbasename "$2")"
 	[ -e "$to" ] && err "file $to already exists; aborting"
 	mv "$(gpgbasename "$1")" "$to"
