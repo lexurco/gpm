@@ -1,113 +1,214 @@
-#!/bin/sh
+#!/usr/bin/perl
 
-umask 077
+use strict;
+use warnings;
 
-[ "$GPM_DIR" ] || if [ "$XDG_DATA_HOME" ]; then
-	GPM_DIR="$XDG_DATA_HOME/gpm"
-else
-	GPM_DIR="$HOME/.gpm"
-fi
+use IPC::Open2;
+use Getopt::Std;
+use File::Basename;
+use File::Path 'make_path';
 
-[ -d "$GPM_DIR" ] || mkdir -p "$GPM_DIR" || exit $?
+our ($opt_g, $opt_d, $opt_r);
+my $gpg;
 
-# Normal files should be created read-only.
-umask 377
-
-cd "$GPM_DIR" || exit 1
-
-err() {
-	eval=$1
-	shift
-	echo $0: "$@" >&2
-	exit $eval
+# usage: print usage information to stderr and exit with error.
+sub usage {
+	my $cmd = basename $0;
+	die
+"usage: $cmd [-g command] [-d dir] add [-m] name\n" .
+"       $cmd [-d dir] rm name ...\n" .
+"       $cmd [-g command] [-d dir] show name\n" .
+"       $cmd [-d dir] mv from to\n" .
+"       $cmd [-d dir] ls\n";
 }
 
-g() {
-	[ "$gpg" ] || if which gpg >/dev/null 2>&1; then
-		gpg=gpg
-	elif which gpg2 >/dev/null 2>&1; then
-		gpg=gpg2
-	else
-		echo "couldn't find gpg" 2>/dev/null
-		exit 1
-	fi
-
-	$gpg "$@"
+# getrecipient: return string to be used with gpg's -r option.
+#
+# Past versions of gpm (written in shell) required explicit recipient, set by
+# option -r, or the GPM_RECIPIENT environment variable. This is completely
+# unnecessary now, due to GPM_GPG and -g, but legacy syntax is still maintained.
+sub getrecipient {
+	my $r = $opt_r;
+	defined $r or $r = $ENV{GPM_RECIPIENT};
+	return $r;
 }
 
-gpgname() {
-	if printf %s\\n "$1" | grep -q '\.gpg$'; then
-		printf %s\\n "$1"
-	else
-		printf %s\\n "$1.gpg"
-	fi
+# ckpath $path
+#
+# Return 1 if $path doesn't start with /, or contain .. files, and 0 otherwise.
+sub ckpath {
+	my ($p) = @_;
+	return $p !~ m,^/, && $p ne ".." && $p !~ m,^\.\./, && $p !~ m,/\.\./,
+	    && $p !~ m,/\.\.$,;
 }
 
-gpgbasename() {
-	printf %s\\n $(gpgname $(basename "$1"))
+# cklegacy $f
+#
+# Returns the correct path for $f (with or without the .gpg suffix), or dies
+# if no such file exists.
+sub cklegacy {
+	my ($f) = @_;
+	if (!-f $f) {
+		my $f2 = $f . ".gpg";
+		-f $f2 or die "neither $f, nor $f2 exist as regular files\n";
+		return $f2;
+	}
+	return $f;
 }
 
-add() {
-	ret=0
-
-	[ "$GPM_RECIPIENT" ] ||
-	    err 1 "please, set GPM_RECIPIENT, or use the -r option"
-
-	[ "$1" ] || usage
-	out=$(gpgbasename "$1")
-
-	[ -e "$out" ] && err 1 "$1 already exists"
-
-	if [ -t 0 ]; then
-		stty -echo
-		printf %s secret:; IFS= read -r sec; echo
-		printf %s confirm:; IFS= read -r confirm; echo
-		stty echo
-		[ "$sec" = "$confirm" ] || err 1 "confirmation failed"
-	else
-		IFS= read -r sec
-	fi
-
-	printf %s "$sec" | g -e -r "$GPM_RECIPIENT" >"$out" ||
-	    { rm -f "$out"; ret=1; }
-
-	# The script might be sourced.
-	sec=
-	confirm=
-
-	exit $ret
+# prunetree $d: remove empty directories, starting from $d, and going up.
+sub prunetree {
+	for (my ($d) = @_; $d ne "."; $d = dirname $d) {
+		rmdir $d or last;
+	}
 }
 
-move() {
-	[ "$2" ] || usage
-	to=$(gpgbasename "$2")
-	[ -e "$to" ] && err "file $to already exists; aborting"
-	mv $(gpgbasename "$1") "$to"
+# add
+#
+# Encrypt the secret from stdin, and store the ciphertext in file specified
+# on the command line.
+sub add {
+	our $opt_m;
+	my $r = getrecipient;
+	my ($cmd, $sec);
+
+	$cmd .= "$gpg -e";
+	$cmd .= " -r $r" if defined $r;
+
+	getopts('m') or usage;
+	$#ARGV >= 0 or usage;
+
+	my $outfile = $ARGV[0];
+	ckpath $outfile or die "bad path: $outfile\n";
+
+	-e $outfile and die "$outfile already exists\n";
+
+	if (-t STDIN && !$opt_m) {
+		system "stty -echo";
+
+		print "Secret:";
+		$sec = <STDIN>;
+		print "\n";
+		print "Repeat:";
+		my $sec2 = <STDIN>;
+		print "\n";
+		die "Sorry\n" if $sec ne $sec2;
+
+		system "stty echo";
+	} else { while (<STDIN>) { $sec .= $_; } }
+
+	my $pid = open2(my $reader, my $writer, $cmd);
+	print $writer $sec;
+	close($writer);
+	my $out;
+	while (<$reader>) { $out .= $_; }
+	waitpid $pid, 0;
+	$? == 0 or exit 1;
+
+	my $d = dirname $outfile;
+	make_path($d, {mode => 0700});
+	umask 0377;
+	unless (open FH, ">$outfile") {
+		prunetree($d);
+		die "couldn't open $outfile for writing: $!\n";
+	}
+	unless (print FH $out) {
+		prunetree($d);
+		die "couldn't write to $outfile: $!\n";
+	}
 }
 
-usage() {
-	cat >&2 <<EOF
-usage:	$0 [-d dir] [-r recipient] {add | rm | show} name
-	$0 [-d dir] [-r recipient] mv from to
-	$0 [-d dir] [-r recipient] ls
-EOF
-	exit 1
+# ls
+#
+# Produce a listing of files in the gpm directory, using the GPM_LSCMD
+# environment variable if defined.
+sub ls {
+	my $cmd = $ENV{GPM_LSCMD};
+	unless (defined $cmd) {
+		opendir my $dh, "." or die "couldn't open directory .: $!\n";
+		while (readdir $dh) {
+			if ($_ ne "." && $_ ne ".." && -d $_) {
+				$cmd = "find . -type f | sed 's,^\./,,'";
+				last;
+			}
+		}
+		$cmd = "ls" unless defined $cmd;
+	}
+	system($cmd);
+	$? == 0 or exit 1;
 }
 
-while getopts r:d: s; do
-	case $s in
-	d)	GPM_DIR="$OPTARG" ;;
-	r)	GPM_RECIPIENT="$OPTARG" ;;
-	*)	usage ;;
-	esac
-done
-shift $((OPTIND-1))
+# mv: safely rename $ARGV[0] to $ARGV[1].
+sub mv {
+	$#ARGV >= 1 || usage;
+	my ($from, $to) = @ARGV;
+	ckpath $from or die "bad path $from\n";
+	ckpath $to or die "bad path $to\n";
+	-e $to and die "$to already existst\n";
+	$from = cklegacy $from;
 
-case $1 in
-a*) shift; add "$@" ;;
-l*) ls ;;
-m*) shift; move "$@" ;;
-r*) rm -f $(gpgbasename "$2") ;;
-s*) g -qd $(gpgbasename "$2") | if [ -t 1 ]; then awk {print}; else cat; fi ;;
- *) usage ;;
-esac
+	make_path(dirname $to, {mode => 0700});
+	rename $from, $to;
+	prunetree(dirname $from);
+}
+
+# rm: unlink arguments, asking each time.
+sub rm {
+	$#ARGV >= 0 || usage;
+	for (@ARGV) {
+		my $f = $_;
+		unless (ckpath $f) {
+			print STDERR "bad path $f\n";
+			next;
+		}
+		$f = cklegacy $f;
+		print "Really remove $f? ";
+		<STDIN> =~ m/^[Yy]/ and unlink $f;
+		prunetree(dirname $f);
+	}
+}
+
+# show: decrypt file, and print plaintext to stdout.
+sub show {
+	$#ARGV >= 0 or usage;
+	my $file = $ARGV[0];
+	ckpath $file or die "bad path $file\n";
+	$file = cklegacy $file;
+
+	system("$gpg -d $file");
+	$? == 0 or exit 1;
+}
+
+getopts('g:d:r') or usage;
+
+$#ARGV >= 0 or usage;
+my $cmd = $ARGV[0];
+shift @ARGV;
+
+$gpg = $opt_g;
+$gpg = $ENV{GPM_GPG} unless defined $gpg;
+$gpg = "gpg" unless defined $gpg;
+
+my $gpmd = $opt_d;
+defined $gpmd or $gpmd = $ENV{GPM_DIR};
+unless (defined $gpmd) {
+	if (defined $ENV{XDG_DATA_HOME}) {
+		$gpmd = $ENV{XDG_DATA_HOME} . "/gpm";
+	} elsif (defined $ENV{HOME}) {
+		$gpmd = $ENV{HOME} . "/.gpm";
+	} else {
+		die "couldn't determine the gpm directory\n";
+	}
+}
+
+make_path($gpmd, {mode => 0700});
+chdir $gpmd or die "couldn't change directory to $gpmd: $!\n";
+
+for ($cmd) {
+if (/^a/) { add; last; }
+if (/^l/) { ls; last; }
+if (/^m/) { mv; last; }
+if (/^r/) { rm; last; }
+if (/^s/) { show; last; }
+	usage;
+}
