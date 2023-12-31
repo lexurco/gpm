@@ -1,0 +1,19 @@
+0.2
+
+- Completely rewrote in perl
+- Added support for creating directories of arbitrary depth within GPM_DIR
+- Added support for GPM_GPG environment variable and -g flag
+- The GPM_RECIPIENT environment variable and -r flag are now optional
+- Added support for multiline secrets
+- Added the -m flag for the add command
+- The add command no longer forces the .gpg suffix
+- Added support for the GPM_LSCMD environment variable
+- The rm command now asks before each removal (for forced removal use
+  "cd $GPM_DIR && rm -f $file")
+- No longer trying to be "clever" about newlines
+- The pm2gpm script is now a bit more secure
+- Some man page fixes
+
+0.1
+
+First release.
