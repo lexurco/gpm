@@ -1,12 +1,17 @@
-#!/bin/sh -e
+#!/bin/sh
 
-stty -echo
-printf pass:; IFS= read -r pass; echo
-stty echo
+files=$(pm l | tr \\n ' ')
+awk -vfiles="$files" -vstty="$(stty -g)" '
+	BEGIN {
+		system("stty -echo")
+		printf("pass:")
+		getline pass
+		system("stty " stty)
 
-for f in $(pm l); do
-	printf %s\\n "$pass" | pm s "$f" | gpm "$@" add "$f"
+		split(files, a)
+		for (f in a)
+			print pass
+	}
+' | for f in $files; do
+	pm s "$f" | gpm "$@" add "$f"
 done
-
-# The script might have been sourced.
-pass=
