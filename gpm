@@ -222,6 +222,10 @@ sub copy {
 			exit 1;
 		}
 
+		if ($sleep < 1) {
+			exit 0;
+		}
+
 		$pw = sha256 $pw;
 		$pid = fork();
 		if (not defined $pid) {
