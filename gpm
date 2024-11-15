@@ -7,6 +7,9 @@ use IPC::Open2;
 use Getopt::Std;
 use File::Basename;
 use File::Path 'make_path';
+use POSIX ':sys_wait_h';
+
+use Digest::SHA 'sha256';
 
 our ($opt_g, $opt_d, $opt_r);
 my $gpg;
@@ -16,6 +19,7 @@ sub usage {
 	my $cmd = basename $0;
 	die
 "usage: $cmd [-g command] [-d dir] add [-m] name\n" .
+"       $cmd [-g command] [-d dir] copy\n" .
 "       $cmd [-d dir] rm name ...\n" .
 "       $cmd [-g command] [-d dir] show name\n" .
 "       $cmd [-d dir] mv from to\n" .
@@ -168,15 +172,66 @@ sub rm {
 	}
 }
 
-# show: decrypt file, and print plaintext to stdout.
-sub show {
+# get: decrypt file, and return plaintext.
+sub get {
 	$#ARGV >= 0 or usage;
 	my $file = $ARGV[0];
 	ckpath $file or die "bad path $file\n";
 	$file = cklegacy $file;
-
-	system("$gpg -d $file");
+	my $out = `$gpg -d $file`;
 	$? == 0 or exit 1;
+	return $out;
+}
+
+# show: decrypt file, and print plaintext to stdout.
+sub show {
+	print(get @ARGV);
+}
+
+# copy: decrypt file, and copy to GPM_COPY_INCMD, delete with GPM_COPY_DELCMD
+# after GPM_COPY_SLEEP seconds if necessary.
+sub copy {
+	my $incmd =	$ENV{GPM_COPY_INCMD} // "xclip";
+	my $outcmd =	$ENV{GPM_COPY_SHOWCMD} // "xclip -o";
+	my $delcmd =	$ENV{GPM_COPY_DELCMD} // "xclip </dev/null";
+	my $sleep =	$ENV{GPM_COPY_SLEEP} // 60;
+
+	my $pw = get(@ARGV);
+
+	# This is a huge cludge. The reason we have to do copying inside a detached
+	# process is because otherwise the following doesn't work (assuming xclip):
+	#
+	# $ tmux popup -E 'GPG_TTY=`tty` pmc' && sleep 1 && xclip -o
+	my $pid = fork();
+	if (not defined $pid) {
+		die "Fork failed: $!\n";
+	} elsif ($pid == 0) {
+		POSIX::setsid();
+
+		open(FH, "|-", $incmd) or
+		    die "Could not open command '$incmd': $!\n";
+		print FH $pw;
+		close FH;
+		if ($? != 0) {
+			system $delcmd;
+			exit 1;
+		}
+
+		$pw = sha256 $pw;
+		$pid = fork();
+		if (not defined $pid) {
+			system $delcmd;
+			die "Fork failed: $!\n";
+		} elsif ($pid == 0) {
+			POSIX::setsid();
+			sleep $sleep;
+			system($delcmd) if
+			    (sha256(`$outcmd`) eq $pw);
+		}
+	} else {
+		waitpid $pid, 0;
+		exit $?;
+	}
 }
 
 getopts('g:d:r') or usage;
@@ -206,6 +261,7 @@ chdir $gpmd or die "couldn't change directory to $gpmd: $!\n";
 
 for ($cmd) {
 if (/^a/) { add; last; }
+if (/^c/) { copy; last; }
 if (/^l/) { ls; last; }
 if (/^m/) { mv; last; }
 if (/^r/) { rm; last; }
