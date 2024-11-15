@@ -99,11 +99,13 @@ sub add {
 
 		system "stty echo";
 		die "Sorry\n" if $sec ne $sec2;
+		undef $sec2;
 	} else { while (<STDIN>) { $sec .= $_; } }
 
 	my $pid = open2(my $reader, my $writer, $cmd);
 	print $writer $sec;
-	close($writer);
+	undef $sec;
+	close $writer;
 	my $out;
 	while (<$reader>) { $out .= $_; }
 	waitpid $pid, 0;
