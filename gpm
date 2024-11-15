@@ -16,14 +16,14 @@ my $gpg;
 
 # usage: print usage information to stderr and exit with error.
 sub usage {
-	my $cmd = basename $0;
 	die
-"usage: $cmd [-g command] [-d dir] add [-m] name\n" .
-"       $cmd [-g command] [-d dir] copy\n" .
-"       $cmd [-d dir] rm name ...\n" .
-"       $cmd [-g command] [-d dir] show name\n" .
-"       $cmd [-d dir] mv from to\n" .
-"       $cmd [-d dir] ls\n";
+"usage: gpm [-g command] [-d dir] add [-m] name\n" .
+"       gpm [-g command] [-d dir] copy [-d delcmd] [-i incmd] [-o outcmd]\n" .
+"                                      [-s time]\n" .
+"       gpm [-d dir] rm name ...\n" .
+"       gpm [-g command] [-d dir] show name\n" .
+"       gpm [-d dir] mv from to\n" .
+"       gpm [-d dir] ls\n";
 }
 
 # getrecipient: return string to be used with gpg's -r option.
@@ -191,12 +191,17 @@ sub show {
 # copy: decrypt file, and copy to GPM_COPY_INCMD, delete with GPM_COPY_DELCMD
 # after GPM_COPY_SLEEP seconds if necessary.
 sub copy {
-	my $incmd =	$ENV{GPM_COPY_INCMD} // "xclip";
-	my $outcmd =	$ENV{GPM_COPY_SHOWCMD} // "xclip -o";
-	my $delcmd =	$ENV{GPM_COPY_DELCMD} // "xclip </dev/null";
-	my $sleep =	$ENV{GPM_COPY_SLEEP} // 60;
+	our ($opt_d, $opt_i, $opt_o, $opt_s);
 
-	my $pw = get(@ARGV);
+	getopts('d:i:o:s:') or usage();
+	$#ARGV >= 0 or usage();
+
+	my $delcmd =	$opt_d // $ENV{GPM_COPY_DELCMD} // "xclip </dev/null";
+	my $incmd =	$opt_i // $ENV{GPM_COPY_INCMD} // "xclip";
+	my $outcmd =	$opt_o // $ENV{GPM_COPY_OUTCMD} // "xclip -o";
+	my $sleep =	$opt_s // $ENV{GPM_COPY_SLEEP} // 60;
+
+	my $pw = get @ARGV;
 
 	# This is a huge cludge. The reason we have to do copying inside a detached
 	# process is because otherwise the following doesn't work (assuming xclip):
