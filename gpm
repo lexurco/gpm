@@ -73,10 +73,8 @@ sub prunetree {
 # on the command line.
 sub add {
 	our $opt_m;
-	my $r = getrecipient;
-	my ($cmd, $sec);
+	my ($r, $sec, $cmd) = (getrecipient(), '', "$gpg -e");
 
-	$cmd .= "$gpg -e";
 	$cmd .= " -r $r" if defined $r;
 
 	getopts('m') or usage;
