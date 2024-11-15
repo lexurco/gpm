@@ -96,9 +96,9 @@ sub add {
 		print "Repeat:";
 		my $sec2 = <STDIN>;
 		print "\n";
-		die "Sorry\n" if $sec ne $sec2;
 
 		system "stty echo";
+		die "Sorry\n" if $sec ne $sec2;
 	} else { while (<STDIN>) { $sec .= $_; } }
 
 	my $pid = open2(my $reader, my $writer, $cmd);
