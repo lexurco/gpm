@@ -1,0 +1,92 @@
+#!/bin/sh
+
+selector=${SELECTOR:-fzf}
+justprint=false
+allenable=true
+tmux=tmux
+primary=primary
+clipboard=clipboard
+out=out
+
+while getopts COPTcopt name; do
+	case $name in
+	C)	clipboard= ;;
+	O)	out= ;;
+	P)	primary= ;;
+	T)	tmux= ;;
+	[copt])
+		if $allenable; then
+			allenable=false
+			tmux=
+			primary=
+			clipboard=
+			out=
+		fi
+
+		case $name in
+		c)	clipboard=clipboard ;;
+		o)	out=out ;;
+		p)	primary=primary ;;
+		t)	tmux=tmux ;;
+		esac
+		;;
+	?)	echo "usage: igpm [-COPTcopt] [file ...]" >&2; exit 1 ;;
+	esac
+done
+shift $((OPTIND - 1))
+
+test -n "$TMUX" || tmux=
+test -n "$DISPLAY" || { primary=; clipboard=; }
+
+clip="$tmux $primary $clipboard $out"
+nclip=0
+for c in $clip; do nclip=$((nclip + 1)); done
+[ $nclip -gt 0 ] || { echo "nowhere to copy" 2>&1; exit 1; }
+[ $nclip -eq 1 ] || clip="$(printf %s\\n $clip | $selector)"
+
+case $clip in
+tmux)
+	test "$tmux" || exit 1
+	GPM_COPY_INCMD='tmux loadb -b _gpm -'
+	GPM_COPY_OUTCMD='tmux showb -b _gpm'
+	GPM_COPY_DELCMD='tmux deleteb -b _gpm'
+	;;
+primary)
+	test "$primary" || exit 1
+	GPM_COPY_INCMD=xclip
+	GPM_COPY_OUTCMD='xclip -o'
+	GPM_COPY_DELCMD='xclip </dev/null'
+	;;
+clipboard)
+	test "$clipboard" || exit 1
+	GPM_COPY_INCMD='xclip -selection c'
+	GPM_COPY_OUTCMD='xclip -selection c -o'
+	GPM_COPY_DELCMD='xclip -selection c </dev/null'
+	;;
+out)
+	test "$out" || exit 1
+	justprint=true
+	;;
+*)
+	exit 1
+	;;
+esac
+export GPM_COPY_INCMD GPM_COPY_OUTCMD GPM_COPY_DELCMD
+
+if [ "$#" -eq 1 ]; then
+	pw="$1"
+else
+	pw="$(
+		if [ "$#" -gt 0 ]; then
+			for i; do printf %s\\n "$i"; done
+		else
+			gpm ls
+		fi | $selector
+	)"
+fi
+
+if $justprint; then
+	gpm show "$pw"
+else
+	gpm copy "$pw"
+fi
