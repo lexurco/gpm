@@ -26,15 +26,20 @@ sub usage {
 "       gpm [-d dir] ls\n";
 }
 
+# shellquote: return string suitable for using as an argument for sh
+sub shellquote {
+	my ($s) = @_;
+	$s =~ s/'/'\\''/g;
+	return "'" . $s . "'";
+}
+
 # getrecipient: return string to be used with gpg's -r option.
 #
 # Past versions of gpm (written in shell) required explicit recipient, set by
 # option -r, or the GPM_RECIPIENT environment variable. This is completely
 # unnecessary now, due to GPM_GPG and -g, but legacy syntax is still maintained.
 sub getrecipient {
-	my $r = $opt_r;
-	defined $r or $r = $ENV{GPM_RECIPIENT};
-	return $r;
+	return shellquote($opt_r // $ENV{GPM_RECIPIENT});
 }
 
 # ckpath $path
@@ -177,7 +182,7 @@ sub get {
 	$#ARGV >= 0 or usage;
 	my $file = $ARGV[0];
 	ckpath $file or die "bad path $file\n";
-	$file = cklegacy $file;
+	$file = shellquote(cklegacy $file);
 	my $out = `$gpg -d $file`;
 	$? == 0 or exit 1;
 	return $out;
