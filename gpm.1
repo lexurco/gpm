@@ -1,4 +1,4 @@
-.Dd December 31, 2023
+.Dd November 12, 2024
 .Dt GPM 1
 .Os
 .Sh NAME
@@ -51,6 +51,46 @@ If used from a TTY without the
 .Fl m
 flag, a single line is read twice, and not echoed.
 Otherwise, an arbitrary amount of lines is read normally once.
+.It Xo
+.Cm copy
+.Op Fl d Ar delcmd
+.Op Fl i Ar incmd
+.Op Fl o Ar outcmd
+.Op Fl s Ar time
+.Ar name
+.Xc
+Copy the secret
+.Ar name
+by piping it to
+.Ar incmd .
+After
+.Ar time
+seconds, run
+.Ar delcmd
+if
+.Ar outcmd
+prints plaintext secret
+.Ar name
+on standard output.
+Without
+.Fl d , i , o
+or
+.Fl s ,
+the values of
+.Ev GPM_COPY_DELCMD , GPM_COPY_INCMD , GPM_COPY_OUTCMD
+and
+.Ev GPM_COPY_SLEEP
+are used.
+The default values are
+.Ql xclip </dev/null ,
+.Ql xclip ,
+.Ql xclip -o
+and 60.
+If
+.Ar time
+is 0,
+.Ar delcmd
+is not run.
 .It Cm ls
 List existing secrets, using the command in
 .Ev GPM_LSCMD
@@ -104,12 +144,13 @@ are set.
 Tab-completion may be set, e.g. with
 .Xr ksh 1 :
 .Bd -literal -offset indent
-set -A complete_gpm_1 -- add ls mv rm show
+set -A complete_gpm_1 -- add copy ls mv rm show
 set -A complete_gpm -- $(gpm ls)
 .Ed
 .Sh SEE ALSO
 .Xr gpg 1 ,
 .Xr gpg2 1 ,
-.Xr pm 1
+.Xr pm 1 ,
+.Xr xclip 1
 .Sh AUTHORS
 .An Alexander Arkhipov Aq Mt aa@manpager.org .
