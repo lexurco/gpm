@@ -3,10 +3,10 @@
 use strict;
 use warnings;
 
-use IPC::Open2;
-use Getopt::Std;
 use File::Basename;
 use File::Path 'make_path';
+use Getopt::Std;
+use IPC::Open2;
 use POSIX ':sys_wait_h';
 
 use Digest::SHA 'sha256';
@@ -82,8 +82,8 @@ sub add {
 
 	$cmd .= " -r $r" if defined $r;
 
-	getopts('m') or usage;
-	$#ARGV >= 0 or usage;
+	getopts('m') or usage();
+	$#ARGV >= 0 or usage();
 
 	my $outfile = $ARGV[0];
 	ckpath $outfile or die "bad path: $outfile\n";
@@ -103,26 +103,28 @@ sub add {
 		system "stty echo";
 		die "Sorry\n" if $sec ne $sec2;
 		undef $sec2;
-	} else { while (<STDIN>) { $sec .= $_; } }
+	} else {
+		while (<STDIN>) { $sec .= $_; }
+	}
 
 	my $pid = open2(my $reader, my $writer, $cmd);
 	print $writer $sec;
 	undef $sec;
 	close $writer;
-	my $out;
+	my $out = '';
 	while (<$reader>) { $out .= $_; }
 	waitpid $pid, 0;
 	$? == 0 or exit 1;
 
 	my $d = dirname $outfile;
-	make_path($d, {mode => 0700});
+	make_path $d, {mode => 0700};
 	umask 0377;
 	unless (open FH, ">$outfile") {
-		prunetree($d);
+		prunetree $d;
 		die "couldn't open $outfile for writing: $!\n";
 	}
 	unless (print FH $out) {
-		prunetree($d);
+		prunetree $d;
 		die "couldn't write to $outfile: $!\n";
 	}
 }
@@ -133,6 +135,7 @@ sub add {
 # environment variable if defined.
 sub ls {
 	my $cmd = $ENV{GPM_LSCMD};
+
 	unless (defined $cmd) {
 		opendir my $dh, "." or die "couldn't open directory .: $!\n";
 		while (readdir $dh) {
@@ -143,14 +146,15 @@ sub ls {
 		}
 		$cmd = "ls" unless defined $cmd;
 	}
-	system($cmd);
+	system $cmd;
 	$? == 0 or exit 1;
 }
 
 # mv: safely rename $ARGV[0] to $ARGV[1].
 sub mv {
-	$#ARGV >= 1 || usage;
+	$#ARGV >= 1 || usage();
 	my ($from, $to) = @ARGV;
+
 	ckpath $from or die "bad path $from\n";
 	ckpath $to or die "bad path $to\n";
 	-e $to and die "$to already existst\n";
@@ -163,7 +167,7 @@ sub mv {
 
 # rm: unlink arguments, asking each time.
 sub rm {
-	$#ARGV >= 0 || usage;
+	$#ARGV >= 0 || usage();
 	for (@ARGV) {
 		my $f = $_;
 		unless (ckpath $f) {
@@ -179,12 +183,14 @@ sub rm {
 
 # get: decrypt file, and return plaintext.
 sub get {
-	$#ARGV >= 0 or usage;
+	$#ARGV >= 0 or usage();
 	my $file = $ARGV[0];
+
 	ckpath $file or die "bad path $file\n";
 	$file = shellquote(cklegacy $file);
 	my $out = `$gpg -d $file`;
 	$? == 0 or exit 1;
+
 	return $out;
 }
 
@@ -248,18 +254,15 @@ sub copy {
 	}
 }
 
-getopts('g:d:r') or usage;
+getopts('g:d:r') or usage();
 
-$#ARGV >= 0 or usage;
+$#ARGV >= 0 or usage();
 my $cmd = $ARGV[0];
 shift @ARGV;
 
-$gpg = $opt_g;
-$gpg = $ENV{GPM_GPG} unless defined $gpg;
-$gpg = "gpg" unless defined $gpg;
+$gpg = $opt_g // $ENV{GPM_GPG} // "gpg";
 
-my $gpmd = $opt_d;
-defined $gpmd or $gpmd = $ENV{GPM_DIR};
+my $gpmd = $opt_d // $ENV{GPM_DIR};
 unless (defined $gpmd) {
 	if (defined $ENV{XDG_DATA_HOME}) {
 		$gpmd = $ENV{XDG_DATA_HOME} . "/gpm";
@@ -270,15 +273,15 @@ unless (defined $gpmd) {
 	}
 }
 
-make_path($gpmd, {mode => 0700});
+make_path $gpmd, {mode => 0700};
 chdir $gpmd or die "couldn't change directory to $gpmd: $!\n";
 
 for ($cmd) {
-if (/^a/) { add; last; }
-if (/^c/) { copy; last; }
-if (/^l/) { ls; last; }
-if (/^m/) { mv; last; }
-if (/^r/) { rm; last; }
-if (/^s/) { show; last; }
-	usage;
+if (/^a/) { add(); last; }
+if (/^c/) { copy(); last; }
+if (/^l/) { ls(); last; }
+if (/^m/) { mv(); last; }
+if (/^r/) { rm(); last; }
+if (/^s/) { show(); last; }
+	usage();
 }
