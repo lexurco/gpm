@@ -8,6 +8,7 @@ use File::Path 'make_path';
 use Getopt::Std;
 use IPC::Open2;
 use POSIX ':sys_wait_h';
+use Text::ParseWords;
 
 use Digest::SHA 'sha256';
 
@@ -24,6 +25,11 @@ sub usage {
 "       gpm [-g command] [-d dir] show name\n" .
 "       gpm [-d dir] mv from to\n" .
 "       gpm [-d dir] ls\n";
+}
+
+sub getflags {
+	my ($var) = @_;
+	unshift(@ARGV, shellwords $ENV{$var} // '') if defined $var && $var ne '';
 }
 
 # shellquote: return string suitable for using as an argument for sh
@@ -277,11 +283,11 @@ make_path $gpmd, {mode => 0700};
 chdir $gpmd or die "couldn't change directory to $gpmd: $!\n";
 
 for ($cmd) {
-if (/^a/) { add(); last; }
-if (/^c/) { copy(); last; }
-if (/^l/) { ls(); last; }
-if (/^m/) { mv(); last; }
-if (/^r/) { rm(); last; }
-if (/^s/) { show(); last; }
+if (/^a/) { add(getflags "GPM_ADD"); last; }
+if (/^c/) { copy(getflags "GPM_COPY"); last; }
+if (/^l/) { ls(getflags "GPM_LS"); last; }
+if (/^m/) { mv(getflags "GPM_MV"); last; }
+if (/^r/) { rm(getflags "GPM_RM"); last; }
+if (/^s/) { show(getflags "GPM_SHOW"); last; }
 	usage();
 }
