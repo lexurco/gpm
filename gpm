@@ -20,7 +20,7 @@ sub usage {
 	die
 "usage: gpm [-g command] [-d dir] add [-m] name\n" .
 "       gpm [-g command] [-d dir] copy [-d delcmd] [-i incmd] [-o outcmd]\n" .
-"                                      [-s time]\n" .
+"                                      [-s time] name\n" .
 "       gpm [-d dir] rm name ...\n" .
 "       gpm [-g command] [-d dir] show name\n" .
 "       gpm [-d dir] mv from to\n" .
