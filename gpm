@@ -7,7 +7,7 @@ use File::Basename;
 use File::Path 'make_path';
 use Getopt::Std;
 use IPC::Open2;
-use POSIX ':sys_wait_h';
+use POSIX qw(setsid);
 use Text::ParseWords;
 
 use Digest::SHA 'sha256';
@@ -250,6 +250,8 @@ sub copy {
 			system $delcmd;
 			die "Fork failed: $!\n";
 		} elsif ($pid == 0) {
+			open(STDOUT, '>/dev/null');
+			open(STDERR, '>/dev/null');
 			POSIX::setsid();
 			sleep $sleep;
 			system($delcmd) if
