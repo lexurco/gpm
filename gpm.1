@@ -1,4 +1,4 @@
-.Dd November 12, 2024
+.Dd November 16, 2024
 .Dt GPM 1
 .Os
 .Sh NAME
@@ -51,6 +51,13 @@ If used from a TTY without the
 .Fl m
 flag, a single line is read twice, and not echoed.
 Otherwise, an arbitrary amount of lines is read normally once.
+.Pp
+Options in the
+.Ev GPM_ADD
+environment variable are passed to
+.Nm
+.Cm add
+automatically, before any options specified on the command line.
 .It Xo
 .Cm copy
 .Op Fl d Ar delcmd
@@ -91,23 +98,58 @@ If
 is 0,
 .Ar delcmd
 is not run.
+.Pp
+Options in the
+.Ev GPM_COPY
+environment variable are passed to
+.Nm
+.Cm copy
+automatically, before any options specified on the command line.
 .It Cm ls
 List existing secrets, using the command in
 .Ev GPM_LSCMD
 if set.
+.Pp
+Options in the
+.Ev GPM_LS
+environment variable are passed to
+.Nm
+.Cm ls
+automatically, before any options specified on the command line.
 .It Cm mv Ar from Ar to
 Rename secret
 .Ar from
 to
 .Ar to .
+.Pp
+Options in the
+.Ev GPM_MV
+environment variable are passed to
+.Nm
+.Cm mv
+automatically, before any options specified on the command line.
 .It Cm rm Ar name ...
 Remove secrets specified on the command line.
 .Nm
 will ask for confirmation before each removal.
+.Pp
+Options in the
+.Ev GPM_RM
+environment variable are passed to
+.Nm
+.Cm rm
+automatically, before any options specified on the command line.
 .It Cm show Ar name
 Decrypt the secret
 .Ar name ,
 and print plaintext to stdout.
+.Pp
+Options in the
+.Ev GPM_SHOW
+environment variable are passed to
+.Nm
+.Cm show
+automatically, before any options specified on the command line.
 .El
 .Sh ENVIRONMENT
 .Bl -tag -width XDG_DATA_HOME
@@ -116,11 +158,6 @@ Shell command to invoke
 .Xr gpg 1 .
 .It Ev GPM_DIR
 Directory in which the secrets are stored.
-.It Ev GPM_LSCMD
-Shell command used for the
-.Nm
-command
-.Cm ls .
 .It Ev XDG_DATA_HOME
 If
 .Ev XDG_DATA_HOME
