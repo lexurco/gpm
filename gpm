@@ -27,6 +27,7 @@ sub usage {
 "       gpm [-d dir] ls\n";
 }
 
+# getflags: put environment flags at the start of @ARGV
 sub getflags {
 	my ($var) = @_;
 	unshift(@ARGV, shellwords $ENV{$var} // '') if defined $var && $var ne '';
