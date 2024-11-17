@@ -41,7 +41,7 @@ commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Cm add
-.Op Fl m
+.Op Fl Nnm
 .Ar name
 .Xc
 Create a new secret
@@ -51,6 +51,11 @@ If used from a TTY without the
 .Fl m
 flag, a single line is read twice, and not echoed.
 Otherwise, an arbitrary amount of lines is read normally once.
+If
+.Fl n
+is specified without
+.Fl N
+chop off any last newline character of input.
 .Pp
 Options in the
 .Ev GPM_ADD
@@ -60,6 +65,7 @@ environment variable are passed to
 automatically, before any options specified on the command line.
 .It Xo
 .Cm copy
+.Op Fl Nn
 .Op Fl d Ar delcmd
 .Op Fl i Ar incmd
 .Op Fl o Ar outcmd
@@ -98,6 +104,12 @@ If
 is 0,
 .Ar delcmd
 is not run.
+If
+.Fl n
+is specified without
+.Fl N ,
+chop off any last newline character before passing the secret to
+.Ar incmd .
 .Pp
 Options in the
 .Ev GPM_COPY
@@ -139,10 +151,19 @@ environment variable are passed to
 .Nm
 .Cm rm
 automatically, before any options specified on the command line.
-.It Cm show Ar name
+.It Xo
+.Cm show
+.Op Fl Nn
+.Ar name
+.Xc
 Decrypt the secret
 .Ar name ,
 and print plaintext to stdout.
+If
+.Fl n
+is specified without
+.Fl N ,
+chop off any last newline character of output.
 .Pp
 Options in the
 .Ev GPM_SHOW
