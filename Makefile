@@ -31,7 +31,7 @@ clean:
 
 dist: clean
 	mkdir -p $(DIST)
-	cp -rf CHANGES COPYING Makefile README examples/igpm pm2gpm version.mk \
+	cp -rf CHANGES Makefile README examples/igpm pm2gpm version.mk \
 	    $(BIN) $(MAN) $(DIST)
 	tar cf - $(DIST) | gzip >$(TARBALL)
 	rm -rf $(DIST)
