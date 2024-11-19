@@ -1,3 +1,12 @@
+0.3
+
+- Added the copy subcommand
+- Added the {add|copy|show} -Nn flags
+- Added the GPM_<COMMAND> environment variables
+- Shell metacharacters are now correctly escaped!
+- stty is now always reset before death
+- Some documentation fixes
+
 0.2
 
 - Completely rewrote in perl
