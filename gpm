@@ -99,12 +99,13 @@ sub prunetree {
 # on the command line.
 sub add {
 	our ($opt_N, $opt_n, $opt_m);
-	my ($r, $sec, $cmd) = (getrecipient(), '', "$gpg -e");
-
-	$cmd .= " -r $r" if defined $r;
+	my ($r, $sec) = (getrecipient(), '');
 
 	getopts('Nnm') or usage();
 	$#ARGV >= 0 or usage();
+
+	my $cmd = $ENV{GPM_ENCCMD} //
+	    "$gpg -e" . (defined $r ? " -r $r" : "") . " --";
 
 	my $outfile = $ARGV[0];
 	ckpath $outfile or die "bad path: $outfile\n";
@@ -112,13 +113,14 @@ sub add {
 	-e $outfile and die "$outfile already exists\n";
 
 	if (-t STDIN && !$opt_m) {
+		open TTY, "/dev/tty" || die "couldn't open /dev/tty: $!\n";
 		system "stty -echo";
 
 		print "Secret:";
-		$sec = <STDIN>;
+		$sec = <TTY>;
 		print "\n";
 		print "Repeat:";
-		my $sec2 = <STDIN>;
+		my $sec2 = <TTY>;
 		print "\n";
 		if ($opt_n && !$opt_N) {
 			chomp $sec;
@@ -126,6 +128,7 @@ sub add {
 		}
 
 		system "stty echo";
+		close TTY;
 		die "Sorry\n" if $sec ne $sec2;
 		undef $sec2;
 	} else {
@@ -211,10 +214,18 @@ sub get {
 	my ($Nflag, $nflag) = @_;
 	$#ARGV >= 0 or usage();
 	my $file = $ARGV[0];
+	my $cmd = $ENV{GPM_DECCMD} // "$gpg -d --";
 
 	ckpath $file or die "bad path $file\n";
-	$file = shellquote(cklegacy $file);
-	my $out = `$gpg -d $file`;
+
+	open(my $freader, "<", $file) or die "Can't open < $file: $!";
+	my $pid = open2(my $cmdreader, my $cmdwriter, $cmd);
+	print $cmdwriter $_ while (<$freader>); 
+	close $cmdwriter;
+	close $freader;
+	my $out = '';
+	while (<$cmdreader>) { $out .= $_; }
+	waitpid $pid, 0;
 	$? == 0 or exit 1;
 	chomp($out) if ($nflag && !$Nflag);
 
@@ -291,6 +302,7 @@ $#ARGV >= 0 or usage();
 my $cmd = $ARGV[0];
 shift @ARGV;
 
+$gpg = $opt_g // $ENV{GPM_GPG} // "gpg";
 $gpg = $opt_g // $ENV{GPM_GPG} // "gpg";
 
 my $gpmd = $opt_d // $ENV{GPM_DIR};
