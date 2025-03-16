@@ -246,7 +246,7 @@ sub copy {
 	# This is a huge cludge. The reason we have to do copying inside a detached
 	# process is because otherwise the following doesn't work (assuming xclip):
 	#
-	# $ tmux popup -E 'GPG_TTY=`tty` pmc' && sleep 1 && xclip -o
+	# $ tmux popup -E 'GPG_TTY=`tty` igpm' && sleep 1 && xclip -o
 	my $pid = fork();
 	if (not defined $pid) {
 		die "Fork failed: $!\n";
