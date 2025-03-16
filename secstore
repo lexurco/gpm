@@ -52,8 +52,8 @@ sub shellquote {
 # and 0 otherwise.
 sub ckpath {
 	my ($p) = @_;
-	return $p ne '' && $p !~ m,^/, && $p !~ m/\.\.?/ && $p !~ m,^\.\.?/, &&
-	    $p !~ m,/\.\.?/, && $p !~ m,/\.\.?$,;
+	return $p ne '' && $p !~ m,^/, && $p !~ m/\.\./ && $p !~ m,^\.\./, &&
+	    $p !~ m,/\.\./, && $p !~ m,/\.\.$,;
 }
 
 # prunetree $d: remove empty directories, starting from $d, and going up.
@@ -68,19 +68,20 @@ sub prunetree {
 # Encrypt the secret from stdin, and store the ciphertext in file specified
 # on the command line.
 sub secstore_add {
-	our ($opt_N, $opt_n);
+	our ($opt_N, $opt_f, $opt_n) = (0, 0, 0);
 	my ($cmd, $sec) = ($ENV{SECSTORE_ENCCMD} // 'gpg -e --', '');
 
 	local *usage = sub {
-		die "usage: secstore add [-Nn] name\n";
+		die "usage: secstore add [-Nfn] name\n";
 	};
 
-	getopts('Nn') && scalar(@ARGV) == 1 or usage();
+	getopts('Nfn') && scalar(@ARGV) == 1 or usage();
 
 	my $outfile = $ARGV[0];
 	ckpath $outfile or die "bad path: $outfile\n";
 
-	-e $outfile and die "$outfile already exists\n";
+	-e $outfile && !$opt_f and
+	    die "$outfile already exists (use -f to force)\n";
 
 	if (-t STDIN) {
 		open TTY, "/dev/tty" || die "couldn't open /dev/tty: $!\n";
@@ -116,10 +117,12 @@ sub secstore_add {
 
 	my $d = dirname $outfile;
 	make_path $d, {mode => 0700};
-	umask 0377;
+	umask 0177;
+
 	unless (open(FH, ">$outfile") && print(FH $out)) {
+		my $err = $!;
 		prunetree $d;
-		die "couldn't write to $outfile: $!\n";
+		die "couldn't write to $outfile: $err\n";
 	}
 }
 
@@ -144,37 +147,83 @@ sub secstore_list {
 	$? == 0 or exit 1;
 }
 
-# secstore_move: safely rename $ARGV[0] to $ARGV[1].
-sub secstore_move {
-	local *usage = sub {
-		die "usage: secstore move from to\n";
-	};
-	scalar(@ARGV) == 2 || usage();
-	my ($from, $to) = @ARGV;
+# move_file from to
+sub move_file {
+	my ($from, $to, $force) = @_;
 
-	ckpath $from or die "bad path $from\n";
-	ckpath $to or die "bad path $to\n";
-	-e $to and die "$to already existst\n";
+	if (!ckpath $from) {
+		print STDERR "bad path $from\n";
+		return 0;
+	}
+	if (!ckpath $to) {
+		print STDERR "bad path $to\n";
+		return 0;
+	}
+	if (!$force && -e $to) {
+		print STDERR "$to already exists (use -f to force)\n";
+		return 0;
+	}
 
 	make_path(dirname $to, {mode => 0700});
 	rename $from, $to;
 	prunetree(dirname $from);
+
+	return 1;
+}
+
+# move_to_dir file ... dir force
+sub move_to_dir {
+	my ($status, $force, $dir) = (1, pop @_, pop @_);
+	for my $from (@_) {
+		my $to = $dir . "/" . basename($from);
+		print "move_file $from, $to, $force\n";
+		$status = move_file($from, $to, $force) ? $status : 0;
+	}
+	return $status;
+}
+
+# secstore_move: safely rename $ARGV[0] to $ARGV[1].
+sub secstore_move {
+	my $status;
+	our $opt_f = 0;
+
+	local *usage = sub {
+		die
+"usage: secstore move [-f] source target\n" .
+"       secstore move [-f] source ... directory\n";
+	};
+
+	getopts('f') && scalar(@ARGV) >= 2 or usage();
+	my ($from, $to) = @ARGV;
+
+	if (scalar(@ARGV) > 2 || $ARGV[1] =~ m,/$,) {
+		$status = move_to_dir(@ARGV, $opt_f);
+	} else {
+		$status = move_file(@ARGV, $opt_f);
+	}
+
+	exit $status;
 }
 
 # secstore_remove: unlink arguments, asking each time.
 sub secstore_remove {
+	our $opt_f = 0;
 	local *usage = sub {
-		die "usage: secstore remove name [name ...]\n";
+		die "usage: secstore remove [-f] name ...\n";
 	};
-	scalar(@ARGV) >= 1 || usage();
+	getopts('f') && scalar(@ARGV) >= 1 or usage();
 	for (@ARGV) {
 		my $f = $_;
 		unless (ckpath $f) {
 			print STDERR "bad path $f\n";
 			next;
 		}
-		print "Really remove $f? ";
-		<STDIN> =~ m/^[Yy]/ and unlink $f;
+		if ($opt_f) {
+			unlink $f;
+		} else {
+			print "Really remove $f? ";
+			<STDIN> =~ m/^[Yy]/ and unlink $f;
+		}
 		prunetree(dirname $f);
 	}
 }
@@ -208,7 +257,7 @@ sub secstore_print {
 		die "usage: secstore print [-Nn] name ...";
 	};
 	getopts('Nn') && scalar(@ARGV) == 1 or usage();
-	print(get $opt_N, $opt_n, $ARGV[0]);
+	print(get($opt_N, $opt_n, $ARGV[0]));
 }
 
 # copy: decrypt file, and copy to SECSTORE_COPY_INCMD, delete with
