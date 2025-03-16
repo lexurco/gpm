@@ -1,6 +1,6 @@
 include version.mk
 
-BIN = gpm
+BIN = secstore
 MAN = $(BIN:=.1)
 DIST = $(BIN)$(V)
 TARBALL = $(DIST).tar.gz

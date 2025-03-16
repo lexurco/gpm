@@ -33,8 +33,6 @@ or a custom command (see
 .Sx ENVIRONMENT ) .
 .Nm
 provides several commands for manipulating secrets.
-Commands may be specified by their shortest unique prefix (all characters
-after are ignored).
 Commands may accept additional arguments.
 Commands may be preceeded by global options as follows:
 .Bl -tag -width Ds
@@ -47,10 +45,11 @@ Overrides
 The
 .Nm
 commands are as follows:
-.Bl -tag -width Ds
+.Pp
+.Bl -tag -compact -width Ds
 .It Xo
 .Cm add
-.Op Fl Nnm
+.Op Fl fm
 .Ar name
 .Xc
 Create a new secret
@@ -59,28 +58,20 @@ The new secret is read from stdin.
 If used from a TTY without the
 .Fl m
 flag, a single line is read twice, and not echoed.
-Otherwise, an arbitrary amount of lines is read normally once.
-If
-.Fl n
-is specified without
-.Fl N
-chop off any last newline character of input.
+Otherwise, an arbitrary amount of lines is read once (and echoed).
+Unless
+.Fl f
+is specified, overwriting existing secrets is not allowed.
 .Pp
-Options in the
-.Ev SECSTORE_ADD
-environment variable are passed to
-.Nm
-.Cm add
-automatically, before any options specified on the command line.
 .It Xo
 .Cm copy
-.Op Fl Nn
 .Op Fl d Ar delcmd
 .Op Fl i Ar incmd
 .Op Fl o Ar outcmd
 .Op Fl s Ar time
 .Ar name
 .Xc
+.Dl Pq alias: Cm cp
 Copy the secret
 .Ar name
 by piping it to
@@ -113,73 +104,53 @@ If
 is 0,
 .Ar delcmd
 is not run.
-If
-.Fl n
-is specified without
-.Fl N ,
-chop off any last newline character before passing the secret to
-.Ar incmd .
 .Pp
-Options in the
-.Ev SECSTORE_COPY
-environment variable are passed to
-.Nm
-.Cm copy
-automatically, before any options specified on the command line.
-.It Cm ls
-List existing secrets, using the command in
-.Ev SECSTORE_LSCMD
-if set.
+.It Cm list
+.Dl Pq alias: Cm ls
+Produce a complete file listing for the secret storage.
 .Pp
-Options in the
-.Ev SECSTORE_LS
-environment variable are passed to
-.Nm
-.Cm ls
-automatically, before any options specified on the command line.
-.It Cm mv Ar from Ar to
+.It Xo
+.Cm move
+.Op Fl f
+.Ar source
+.Ar target
+.Xc
+.It Xo
+.Cm move
+.Op Fl f
+.Ar source ...
+.Ar directory
+.Xc
+.Dl Pq alias: Cm mv
 Rename secret
-.Ar from
+.Ar source
 to
-.Ar to .
+.Ar target .
+If more than two arguments are specified, or
+.Ar target
+ends with a slash
+.Pq Ql / ,
+moves the
+.Ar source
+secrets to
+.Ar directory .
 .Pp
-Options in the
-.Ev SECSTORE_MV
-environment variable are passed to
-.Nm
-.Cm mv
-automatically, before any options specified on the command line.
-.It Cm rm Ar name ...
+.It Xo
+.Cm remove
+.Op Fl f
+.Ar name ...
+.Xc
+.Dl Pq alias: Cm rm
 Remove secrets specified on the command line.
 .Nm
-will ask for confirmation before each removal.
+will ask for confirmation before each removal, unless
+.Fl f
+is specified.
 .Pp
-Options in the
-.Ev SECSTORE_RM
-environment variable are passed to
-.Nm
-.Cm rm
-automatically, before any options specified on the command line.
-.It Xo
-.Cm show
-.Op Fl Nn
-.Ar name
-.Xc
+.It Cm print Ar name
 Decrypt the secret
 .Ar name ,
 and print plaintext to stdout.
-If
-.Fl n
-is specified without
-.Fl N ,
-chop off any last newline character of output.
-.Pp
-Options in the
-.Ev SECSTORE_SHOW
-environment variable are passed to
-.Nm
-.Cm show
-automatically, before any options specified on the command line.
 .El
 .Sh ENVIRONMENT
 .Bl -tag -width XDG_DATA_HOME
@@ -189,7 +160,7 @@ Command used for encryption.
 if not set.
 .It Ev SECSTORE_DECCMD
 Command used for decryption.
-.Dq gpg -d \-\-
+.Dq gpg -dq \-\-
 if not set.
 .It Ev SECSTORE_DIR
 Directory in which the secrets are stored.
@@ -216,8 +187,8 @@ is set.
 Tab-completion may be set, e.g. with
 .Xr ksh 1 :
 .Bd -literal -offset indent
-set -A complete_secstore_1 -- add copy ls mv rm show
-set -A complete_secstore -- $(secstore ls)
+set -A complete_secstore_1 -- add copy list move remove print
+set -A complete_secstore -- $(secstore list)
 .Ed
 .Sh SEE ALSO
 .Xr gpass 1 ,

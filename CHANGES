@@ -1,3 +1,21 @@
+1.0
+
+A jump 0.3 -> 1.0 is made because the utility is now called "secstore",
+and is largely incompatible with the gpm utility. Please refer to the
+README for a migration guide.
+
+- GPM_<COMMAND> variables are no longer handled
+- list now uses a builtin function; removed GPM_LSCMD
+- All other GPM_* variables have been renamed to SECSTORE_*
+- Newlines are now handled intelligently, rather than manually:
+  + The add subcommand appends a newline at the end of its input, if
+    there isn't one already.
+  + The copy subcommand removes the last newline character.
+- add, move and remove subcommands now have an -f (force) flag
+- The move subcommand now behaves more like Unix mv(1)
+- Shortest unique prefixes of subcommands are no longer accepted, but
+  some aliases are.
+
 0.3
 
 - Added the copy subcommand

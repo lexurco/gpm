@@ -1,10 +1,21 @@
-gpm is a gpg-based password manager, similar to pass, but much simpler, and
-free of the bash dependency. gpm is developed from my other now-deprecated
-openssl-based password manager pm. To convert pm passwords into gpm passwords,
-please use the pm2gpm script. For installation run `make install'.
+secstore is a secret storage manager, similar to pass, but more
+flexible, and written in perl. In particular, you are allowed to choose
+which commands to use for encryption/decryption/copying, and a more
+arbitrary file hierarchy is permitted.
+
+secstore is a continuation of gpm.
 
 The dependencies are:
 
 - Digest::SHA
-- gpg
+- gpg (optional)
 - xclip (optional)
+
+
+gpm to secstore migration
+
+$ mv ~/.gpm ~/.secstore
+$ find ~/.secstore -type f -exec chmod u+w {} +
+
+Instead of ~/.{gpm,secstore} you might use $XDG_DATA_HOME/{gpm,secstore}
+or $GPM_DIR and $SECSTORE_DIR.

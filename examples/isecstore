@@ -30,7 +30,7 @@ while getopts COPTcopt name; do
 		t)	tmux=tmux ;;
 		esac
 		;;
-	?)	echo "usage: igpm [-COPTcopt] [file ...]" >&2; exit 1 ;;
+	?)	echo "usage: isecstore [-COPTcopt] [file ...]" >&2; exit 1 ;;
 	esac
 done
 shift $((OPTIND - 1))
@@ -47,9 +47,9 @@ for c in $clip; do nclip=$((nclip + 1)); done
 case $clip in
 tmux)
 	test "$tmux" || exit 1
-	GPM_COPY_INCMD='tmux loadb -b _gpm -'
-	GPM_COPY_OUTCMD='tmux showb -b _gpm'
-	GPM_COPY_DELCMD='tmux deleteb -b _gpm'
+	GPM_COPY_INCMD='tmux loadb -b _secstore -'
+	GPM_COPY_OUTCMD='tmux showb -b _secstore'
+	GPM_COPY_DELCMD='tmux deleteb -b _secstore'
 	;;
 primary)
 	test "$primary" || exit 1
@@ -80,13 +80,13 @@ else
 		if [ "$#" -gt 0 ]; then
 			for i; do printf %s\\n "$i"; done
 		else
-			gpm ls
+			secstore ls
 		fi | $selector
 	)"
 fi
 
 if $justprint; then
-	gpm show "$pw"
+	secstore show "$pw"
 else
-	gpm copy "$pw"
+	secstore copy "$pw"
 fi
