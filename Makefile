@@ -30,9 +30,9 @@ clean:
 	-rm -rf $(TARBALL) $(DIST)
 
 dist: clean
-	mkdir -p $(DIST)
-	cp -rf CHANGES Makefile README examples/igpm pm2gpm version.mk \
-	    $(BIN) $(MAN) $(DIST)
+	mkdir -p $(DIST) $(DIST)/examples
+	cp -rf CHANGES Makefile README TODO version.mk $(BIN) $(MAN) $(DIST)
+	cp -rf examples/isecstore $(DIST)/examples
 	tar cf - $(DIST) | gzip >$(TARBALL)
 	rm -rf $(DIST)
 

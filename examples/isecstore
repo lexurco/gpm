@@ -47,21 +47,21 @@ for c in $clip; do nclip=$((nclip + 1)); done
 case $clip in
 tmux)
 	test "$tmux" || exit 1
-	GPM_COPY_INCMD='tmux loadb -b _secstore -'
-	GPM_COPY_OUTCMD='tmux showb -b _secstore'
-	GPM_COPY_DELCMD='tmux deleteb -b _secstore'
+	SECSTORE_COPY_INCMD='tmux loadb -b _secstore -'
+	SECSTORE_COPY_OUTCMD='tmux showb -b _secstore'
+	SECSTORE_COPY_DELCMD='tmux deleteb -b _secstore'
 	;;
 primary)
 	test "$primary" || exit 1
-	GPM_COPY_INCMD=xclip
-	GPM_COPY_OUTCMD='xclip -o'
-	GPM_COPY_DELCMD='xclip </dev/null'
+	SECSTORE_COPY_INCMD=xclip
+	SECSTORE_COPY_OUTCMD='xclip -o'
+	SECSTORE_COPY_DELCMD='xclip </dev/null'
 	;;
 clipboard)
 	test "$clipboard" || exit 1
-	GPM_COPY_INCMD='xclip -selection c'
-	GPM_COPY_OUTCMD='xclip -selection c -o'
-	GPM_COPY_DELCMD='xclip -selection c </dev/null'
+	SECSTORE_COPY_INCMD='xclip -selection c'
+	SECSTORE_COPY_OUTCMD='xclip -selection c -o'
+	SECSTORE_COPY_DELCMD='xclip -selection c </dev/null'
 	;;
 out)
 	test "$out" || exit 1
@@ -71,7 +71,7 @@ out)
 	exit 1
 	;;
 esac
-export GPM_COPY_INCMD GPM_COPY_OUTCMD GPM_COPY_DELCMD
+export SECSTORE_COPY_INCMD SECSTORE_COPY_OUTCMD SECSTORE_COPY_DELCMD
 
 if [ "$#" -eq 1 ]; then
 	pw="$1"
@@ -80,13 +80,13 @@ else
 		if [ "$#" -gt 0 ]; then
 			for i; do printf %s\\n "$i"; done
 		else
-			secstore ls
+			secstore list
 		fi | $selector
 	)"
 fi
 
 if $justprint; then
-	secstore show "$pw"
+	secstore print "$pw"
 else
 	secstore copy "$pw"
 fi
