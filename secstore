@@ -126,25 +126,43 @@ sub secstore_add {
 	}
 }
 
+# find $file
+sub find {
+	my $path = shift @_;
+	my $f = basename $path;
+	
+	if ($f eq "." || $f eq "..") {
+		return 1;
+	}
+
+	if (-d $path) {
+		my $dh;
+		if (!opendir $dh, $path) {
+			print STDERR "Can't open directory $path: $!\n";
+			return 0;
+		}
+		while (readdir $dh) {
+			find($path . "/" . $_);
+		}
+	} else {
+		print "$path\n";
+	}
+
+	return 1;
+
+}
+
+
 # secstore_list
 #
-# Produce a listing of files in the gpm directory, using the SECSTORE_LSCMD
-# environment variable if defined.
+# Produce a listing of files in the secstore directory.
 sub secstore_list {
-	my $cmd = $ENV{SECSTORE_LSCMD};
-
-	unless (defined $cmd) {
-		opendir my $dh, "." or die "couldn't open directory .: $!\n";
-		while (readdir $dh) {
-			if ($_ ne "." && $_ ne ".." && -d $_) {
-				$cmd = "find . -type f | sed 's,^\./,,'";
-				last;
-			}
-		}
-		$cmd = "ls" unless defined $cmd;
+	my $status = 1;
+	opendir my $dh, "." or die "couldn't open directory .: $!\n";
+	while (readdir $dh) {
+		$status = find($_) ? $status : 0;
 	}
-	system $cmd;
-	$? == 0 or exit 1;
+	exit $status;
 }
 
 # move_file from to
