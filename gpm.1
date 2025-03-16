@@ -17,11 +17,10 @@
 .Os
 .Sh NAME
 .Nm gpm
-.Nd gpg-based secret (or password) manager
+.Nd general secret (or password) manager
 .Sh SYNOPSIS
 .Nm
 .Op Fl d Ar dir
-.Op Fl g Ar command
 .Ar command
 .Op Ar arg ...
 .Sh DESCRIPTION
@@ -29,7 +28,9 @@ The utility
 .Nm
 is a secret manager.
 Secrets are stored in a directory tree as files, encrypted with
-.Xr gpg 1 .
+.Xr gpg 1
+or a custom command (see
+.Sx ENVIRONMENT ) .
 .Nm
 provides several commands for manipulating secrets.
 Commands may be specified by their shortest unique prefix (all characters
@@ -41,12 +42,6 @@ Commands may be preceeded by global options as follows:
 The directory to store and retrieve secrets from.
 Overrides
 .Ev GPM_DIR .
-.It Fl g Ar command
-The
-.Xr gpg 1
-command.
-Overrides
-.Ev GPM_GPG .
 .El
 .Pp
 The
@@ -188,9 +183,14 @@ automatically, before any options specified on the command line.
 .El
 .Sh ENVIRONMENT
 .Bl -tag -width XDG_DATA_HOME
-.It Ev GPM_GPG
-Shell command to invoke
-.Xr gpg 1 .
+.It Ev GPM_ENCCMD
+Command used for encryption.
+.Dq gpg -e \-\-
+if not set.
+.It Ev GPM_DECCMD
+Command used for decryption.
+.Dq gpg -d \-\-
+if not set.
 .It Ev GPM_DIR
 Directory in which the secrets are stored.
 .It Ev XDG_DATA_HOME
