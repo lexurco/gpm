@@ -44,12 +44,20 @@ sub shellquote {
 
 # ckpath $path
 #
-# Return 1 if $path is not empty, doesn't start with /, or contain .. or .,
-# and 0 otherwise.
+# Return 1 if $path is not empty, doesn't start with /, contain .., or end with
+# a . file and 0 otherwise.
 sub ckpath {
-	my ($p) = @_;
-	return $p ne '' && $p !~ m,^/, && $p !~ m/\.\./ && $p !~ m,^\.\./, &&
-	    $p !~ m,/\.\./, && $p !~ m,/\.\.$,;
+	my $p = shift;
+	my $b = basename $p;
+
+	return 0 if $b eq ".";
+	return 0 if $b eq "..";
+	return 0 if $p eq '';
+	return 0 if $p =~ m,^/,;
+	return 0 if $p =~ m,/\.\./,;
+	return 0 if $p =~ m,^\.\./,;
+
+	return 1;
 }
 
 # prunetree $d: remove empty directories, starting from $d, and going up.
@@ -64,14 +72,14 @@ sub prunetree {
 # Encrypt the secret from stdin, and store the ciphertext in file specified
 # on the command line.
 sub secstore_add {
-	our $opt_f = 0;
+	our ($opt_f, $opt_m) = (0, 0);
 	my ($cmd, $sec) = ($ENV{SECSTORE_ENCCMD} // 'gpg -e --', '');
 
 	local *usage = sub {
-		die "usage: secstore add [-f] name\n";
+		die "usage: secstore add [-fm] name\n";
 	};
 
-	getopts('f') && scalar(@ARGV) == 1 or usage();
+	getopts('fm') && scalar(@ARGV) == 1 or usage();
 
 	my $outfile = $ARGV[0];
 	ckpath $outfile or die "bad path: $outfile\n";
@@ -79,7 +87,7 @@ sub secstore_add {
 	-e $outfile && !$opt_f and
 	    die "$outfile already exists (use -f to force)\n";
 
-	if (-t STDIN) {
+	if (!$opt_m && -t STDIN) {
 		open TTY, "/dev/tty" || die "couldn't open /dev/tty: $!\n";
 		system "stty -echo";
 
@@ -97,7 +105,7 @@ sub secstore_add {
 		die "Sorry\n" if $sec ne $sec2;
 		undef $sec2;
 	} else {
-		while (<STDIN>) { $sec .= $_; }
+		$sec .= $_ while (<STDIN>);
 	}
 
 	$sec .= "\n" if $sec !~ tr/\n$//;
@@ -106,7 +114,7 @@ sub secstore_add {
 	undef $sec;
 	close $writer;
 	my $out = '';
-	while (<$reader>) { $out .= $_; }
+	$out .= $_ while (<$reader>);
 	waitpid $pid, 0;
 	$? == 0 or exit 1;
 
@@ -121,10 +129,13 @@ sub secstore_add {
 	}
 }
 
-# find $file
-sub find {
+# findfile $file
+#
+# recurse $file if $file is a directory, and print it otherwise.
+sub findfile {
 	my $path = shift @_;
 	my $f = basename $path;
+	my $status = 1;
 	
 	if ($f eq "." || $f eq "..") {
 		return 1;
@@ -133,29 +144,28 @@ sub find {
 	if (-d $path) {
 		my $dh;
 		if (!opendir $dh, $path) {
-			print STDERR "Can't open directory $path: $!\n";
+			warn "Can't open directory $path: $!\n";
 			return 0;
 		}
 		while (readdir $dh) {
-			find($path . "/" . $_);
+			$status = findfile($path . "/" . $_) ? $status : 0;
 		}
 	} else {
 		print "$path\n";
 	}
 
-	return 1;
-
+	return $status;
 }
 
 
 # secstore_list
 #
-# Produce a listing of files in the secstore directory.
+# Print a listing of files in the secstore directory.
 sub secstore_list {
 	my $status = 1;
 	opendir my $dh, "." or die "couldn't open directory .: $!\n";
 	while (readdir $dh) {
-		$status = find($_) ? $status : 0;
+		$status = findfile($_) ? $status : 0;
 	}
 	exit $status;
 }
@@ -165,15 +175,15 @@ sub move_file {
 	my ($from, $to, $force) = @_;
 
 	if (!ckpath $from) {
-		print STDERR "bad path $from\n";
+		warn "bad path $from\n";
 		return 0;
 	}
 	if (!ckpath $to) {
-		print STDERR "bad path $to\n";
+		warn "bad path $to\n";
 		return 0;
 	}
 	if (!$force && -e $to) {
-		print STDERR "$to already exists (use -f to force)\n";
+		warn "$to already exists (use -f to force)\n";
 		return 0;
 	}
 
@@ -228,7 +238,7 @@ sub secstore_remove {
 	for (@ARGV) {
 		my $f = $_;
 		unless (ckpath $f) {
-			print STDERR "bad path $f\n";
+			warn "bad path $f\n";
 			next;
 		}
 		if ($opt_f) {
@@ -241,21 +251,23 @@ sub secstore_remove {
 	}
 }
 
-# get: decrypt file, and return plaintext.
-sub get {
+# get_secret $file
+#
+# decrypt file, and return plaintext.
+sub get_secret {
 	my $file = shift;
 	my $cmd = $ENV{SECSTORE_DECCMD} // "gpg -dq --";
 
 	ckpath $file or die "bad path: $file\n";
 	-f $file or die "no such file: $file\n";
 
-	open(my $freader, "<$file") or die "Couldn't open <$file: $!\n";
+	open(my $freader, "<$file") or die "couldn't open <$file: $!\n";
 	my $pid = open2(my $cmdreader, my $cmdwriter, $cmd);
 	print $cmdwriter $_ while (<$freader>); 
 	close $cmdwriter;
 	close $freader;
 	my $out = '';
-	while (<$cmdreader>) { $out .= $_; }
+	$out .= $_ while (<$cmdreader>);
 	waitpid $pid, 0;
 	$? == 0 or exit 1;
 
@@ -268,13 +280,15 @@ sub secstore_print {
 		die "usage: secstore print name ...";
 	};
 	scalar(@ARGV) == 1 or usage();
-	print(get($ARGV[0]));
+	print(get_secret $ARGV[0]);
 }
 
-# copy: decrypt file, and copy to SECSTORE_COPY_INCMD, delete with
+# secstore_copy $name
+#
+# decrypt file $name, and copy to SECSTORE_COPY_INCMD, delete with
 # SECSTORE_COPY_DELCMD after SECSTORE_COPY_SLEEP seconds if necessary.
 sub secstore_copy {
-	our ($opt_N, $opt_n, $opt_d, $opt_i, $opt_o, $opt_s);
+	our ($opt_d, $opt_i, $opt_o, $opt_s);
 	local *usage = sub {
 		die
 "usage: secstore copy [-d delcmd] [-i incmd] [-o outcmd] [-s sleeptime] name\n"
@@ -287,7 +301,7 @@ sub secstore_copy {
 	my $outcmd =	$opt_o // $ENV{SECSTORE_COPY_OUTCMD} // "xclip -o";
 	my $sleep =	$opt_s // $ENV{SECSTORE_COPY_SLEEP} // 60;
 
-	my $sec = get $ARGV[0];
+	my $sec = get_secret $ARGV[0];
 	chomp $sec;
 
 	# This is a huge cludge. The reason we have to do copying inside a detached
@@ -310,9 +324,7 @@ sub secstore_copy {
 			exit 1;
 		}
 
-		if ($sleep < 1) {
-			exit 0;
-		}
+		exit 0 if ($sleep < 1);
 
 		$sec = sha256 $sec;
 		$pid = fork();
