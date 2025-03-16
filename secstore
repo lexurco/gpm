@@ -30,7 +30,9 @@ our $opt_d;
 
 # usage: print usage information to stderr and exit with error.
 sub usage {
-	die "usage: secstore [-d dir] command [arg ...]\n";
+	die
+"usage: secstore [-d dir] command [arg ...]\n" .
+"commands: add, copy, list, move, print, remove\n";
 }
 
 # shellquote: return string suitable for using as an argument for sh
