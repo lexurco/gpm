@@ -33,12 +33,6 @@ sub usage {
 	die "usage: secstore [-d dir] command [arg ...]\n";
 }
 
-# getflags: put environment flags at the start of @ARGV
-sub getflags {
-	my ($var) = @_;
-	unshift(@ARGV, shellwords $ENV{$var} // '') if defined $var && $var ne '';
-}
-
 # shellquote: return string suitable for using as an argument for sh
 sub shellquote {
 	my ($s) = @_;
@@ -360,17 +354,17 @@ chdir $secstore_dir or die "couldn't change directory to $secstore_dir: $!\n";
 
 for ($cmd) {
 if (/^add$/) {
-	secstore_add(getflags "SECSTORE_ADD");
+	secstore_add();
 } elsif (/^(cp|copy)$/)	{
-	secstore_copy(getflags "SECSTORE_COPY");
+	secstore_copy();
 } elsif (/^(ls|list)$/) {
-	secstore_list(getflags "SECSTORE_LIST");
+	secstore_list();
 } elsif (/^(mv|move)$/) {
-	secstore_move(getflags "SECSTORE_MOVE");
+	secstore_move();
 } elsif (/^print$/) {
-	secstore_print(getflags "SECSTORE_PRINT");
+	secstore_print();
 } elsif (/^(rm|remove)$/) {
-	secstore_remove(getflags "SECSTORE_REMOVE");
+	secstore_remove();
 } else {
 	die "unknown command: " . $cmd . "\n"
 }
