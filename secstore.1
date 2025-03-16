@@ -1,4 +1,4 @@
-.\" Copyright (c) 2023 Alex Arx <aa@manpager.org>
+.\" Copyright (c) 2023-2025 Alex Arch <aa@manpager.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -12,12 +12,12 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd November 16, 2024
-.Dt GPM 1
+.Dd February 15, 2025
+.Dt SECSTORE 1
 .Os
 .Sh NAME
-.Nm gpm
-.Nd general secret (or password) manager
+.Nm secstore
+.Nd manage secure (or secret) storage
 .Sh SYNOPSIS
 .Nm
 .Op Fl d Ar dir
@@ -67,7 +67,7 @@ is specified without
 chop off any last newline character of input.
 .Pp
 Options in the
-.Ev GPM_ADD
+.Ev SECSTORE_ADD
 environment variable are passed to
 .Nm
 .Cm add
@@ -99,9 +99,9 @@ Without
 or
 .Fl s ,
 the values of
-.Ev GPM_COPY_DELCMD , GPM_COPY_INCMD , GPM_COPY_OUTCMD
+.Ev SECSTORE_COPY_DELCMD , SECSTORE_COPY_INCMD , SECSTORE_COPY_OUTCMD
 and
-.Ev GPM_COPY_SLEEP
+.Ev SECSTORE_COPY_SLEEP
 are used.
 The default values are
 .Ql xclip </dev/null ,
@@ -121,18 +121,18 @@ chop off any last newline character before passing the secret to
 .Ar incmd .
 .Pp
 Options in the
-.Ev GPM_COPY
+.Ev SECSTORE_COPY
 environment variable are passed to
 .Nm
 .Cm copy
 automatically, before any options specified on the command line.
 .It Cm ls
 List existing secrets, using the command in
-.Ev GPM_LSCMD
+.Ev SECSTORE_LSCMD
 if set.
 .Pp
 Options in the
-.Ev GPM_LS
+.Ev SECSTORE_LS
 environment variable are passed to
 .Nm
 .Cm ls
@@ -144,7 +144,7 @@ to
 .Ar to .
 .Pp
 Options in the
-.Ev GPM_MV
+.Ev SECSTORE_MV
 environment variable are passed to
 .Nm
 .Cm mv
@@ -155,7 +155,7 @@ Remove secrets specified on the command line.
 will ask for confirmation before each removal.
 .Pp
 Options in the
-.Ev GPM_RM
+.Ev SECSTORE_RM
 environment variable are passed to
 .Nm
 .Cm rm
@@ -175,7 +175,7 @@ is specified without
 chop off any last newline character of output.
 .Pp
 Options in the
-.Ev GPM_SHOW
+.Ev SECSTORE_SHOW
 environment variable are passed to
 .Nm
 .Cm show
@@ -183,32 +183,32 @@ automatically, before any options specified on the command line.
 .El
 .Sh ENVIRONMENT
 .Bl -tag -width XDG_DATA_HOME
-.It Ev GPM_ENCCMD
+.It Ev SECSTORE_ENCCMD
 Command used for encryption.
 .Dq gpg -e \-\-
 if not set.
-.It Ev GPM_DECCMD
+.It Ev SECSTORE_DECCMD
 Command used for decryption.
 .Dq gpg -d \-\-
 if not set.
-.It Ev GPM_DIR
+.It Ev SECSTORE_DIR
 Directory in which the secrets are stored.
 .It Ev XDG_DATA_HOME
 If
 .Ev XDG_DATA_HOME
 is set, but
-.Ev GPM_DIR
+.Ev SECSTORE_DIR
 isn't, the default secret directory is
-.Pa $XDG_DATA_HOME/gpm .
+.Pa $XDG_DATA_HOME/secstore .
 .El
 .Sh FILES
 .Bl -tag -width Ds
-.It Pa $HOME/.gpm
+.It Pa $HOME/.secstore
 The default secret directory if neither
-.Ev GPM_DIR ,
+.Ev SECSTORE_DIR ,
 nor
 .Ev XDG_DATA_HOME
-are set.
+is set.
 .El
 .Sh EXIT STATUS
 .Ex -std
@@ -216,13 +216,13 @@ are set.
 Tab-completion may be set, e.g. with
 .Xr ksh 1 :
 .Bd -literal -offset indent
-set -A complete_gpm_1 -- add copy ls mv rm show
-set -A complete_gpm -- $(gpm ls)
+set -A complete_secstore_1 -- add copy ls mv rm show
+set -A complete_secstore -- $(secstore ls)
 .Ed
 .Sh SEE ALSO
+.Xr gpass 1 ,
 .Xr gpg 1 ,
 .Xr gpg2 1 ,
-.Xr pm 1 ,
 .Xr xclip 1
 .Sh AUTHORS
-.An Alex Arx Aq Mt aa@manpager.org .
+.An Alex Arch Aq Mt aa@manpager.org .
